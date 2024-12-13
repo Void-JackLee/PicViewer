@@ -41,9 +41,23 @@ function listFiles(dir: string,filter?: Set<String>): string[] {
   return files
 }
 
+function mkdir(dir: string): boolean {
+  try {
+    const stat = fs.statSync(dir);
+    if (stat.isDirectory()) return true
+    fs.mkdirSync(dir);
+    return true
+  } catch (e) {
+    return false;
+  }
+}
+
+
+
 export {
   isPath,
   isFile,
   filterFile,
   listFiles,
+  mkdir,
 }

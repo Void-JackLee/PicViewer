@@ -2,7 +2,8 @@ import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import { join, dirname, basename } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import {isPath, isFile, filterFile, listFiles} from './util/file'
+import { isPath, isFile, filterFile, listFiles } from './util/file'
+import { loadThumbnail } from './util/img'
 import * as constants from './constants'
 
 const isMac = process.platform === 'darwin'
@@ -76,11 +77,10 @@ app.on('window-all-closed', () => {
 
 // In this file you can include the rest of your app"s specific main process
 // code. You can also put them in separate files and require them here.
-
 Menu.setApplicationMenu(Menu.buildFromTemplate([
   // { role: 'appMenu' }
   ...(isMac ? [{
-    label: app.name,
+    label: 'Jack看图',
     submenu: [
       { role: 'about' },
       { type: 'separator' },
@@ -184,5 +184,14 @@ const openDialog = () => {
     if (BrowserWindow.getAllWindows().length == 0) createWindow()
     const win = BrowserWindow.getAllWindows()[0]
     win.webContents.send('openFile', pathData)
+    loadThumbnail(pathData.location,pathData.files,(path,file,thumbFile) => {
+      win.webContents.send('cacheFile', {
+        location: path,
+        file: file,
+        thumbFile: thumbFile
+      })
+    }).then(info => {console.log(info)}).catch(err => {console.log(err)})
   })
 }
+
+
