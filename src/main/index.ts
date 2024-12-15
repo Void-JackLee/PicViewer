@@ -131,6 +131,15 @@ Menu.setApplicationMenu(Menu.buildFromTemplate([
         click: () => {
           console.log(123)
         }
+      },
+      {
+        label: 'Justify Display',
+        accelerator: 'S',
+        click: () => {
+          if (BrowserWindow.getAllWindows().length === 0) return
+          const win = BrowserWindow.getAllWindows()[0]
+          win.webContents.send('initImgView')
+        }
       }
     ],
   },
@@ -181,16 +190,22 @@ const openDialog = () => {
       }
     }
 
-    if (BrowserWindow.getAllWindows().length == 0) createWindow()
-    const win = BrowserWindow.getAllWindows()[0]
-    win.webContents.send('openFile', pathData)
-    loadThumbnail(pathData.location,pathData.files,(path,file,thumbFile) => {
-      win.webContents.send('cacheFile', {
-        location: path,
-        file: file,
-        thumbFile: thumbFile
-      })
-    }).then(info => {console.log(info)}).catch(err => {console.log(err)})
+    function open() {
+      const win = BrowserWindow.getAllWindows()[0]
+      win.webContents.send('openFile', pathData)
+      loadThumbnail(pathData.location,pathData.files,(path,file,thumbFile) => {
+        win.webContents.send('cacheFile', {
+          location: path,
+          file: file,
+          thumbFile: thumbFile
+        })
+      }).then(info => {console.log(info)}).catch(err => {console.log(err)})
+    }
+
+    if (BrowserWindow.getAllWindows().length == 0) {
+      createWindow()
+      setTimeout(open,500)
+    } else open()
   })
 }
 

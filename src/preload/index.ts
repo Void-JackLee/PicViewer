@@ -1,11 +1,15 @@
 import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import {join} from "path";
+import sharp from "sharp";
 
 // Custom APIs for renderer
 const api = {
   joinPath(...args): string {
     return join(...args)
+  },
+  sharpMetaData(val) {
+    return sharp(val).metadata()
   }
 } as any
 

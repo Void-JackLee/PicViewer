@@ -2,6 +2,7 @@
 body,html,#app {
   height: 100%;
   margin: 0;
+  background: #000;
   ::-webkit-scrollbar {
     background: #333;
   }
@@ -24,6 +25,10 @@ main {
     flex: 1;
     background: #000;
     overflow: hidden;
+    img {
+      transform-origin: top left;
+      position: relative;
+    }
   }
 
   #align-line {
@@ -55,7 +60,7 @@ main {
   }
 
   #list-gallery {
-    height: 130px;
+    height: 138px;
     background: #222;
     overflow-y: auto;
     white-space: nowrap;
@@ -63,8 +68,8 @@ main {
     .list-item {
       display: inline-flex;
       flex-direction: column;
-      width: 170px;
-      height: 112px;
+      width: 183px;
+      height: 120px;
       .list-img {
         flex: 1;
         display: flex;
@@ -72,13 +77,14 @@ main {
         justify-content: center;
         img {
           display: block;
-          height: 80px;
+          height: 90px;
         }
       }
       .label {
         color: #fff;
         height: 20px;
-        font-size: 13px;
+        font-size: 14.5px;
+        transform: translateY(-4.8px);
         text-align: center;
         user-select: none;
       }
@@ -98,7 +104,7 @@ main {
 <template>
 <main>
   <div id="content" ref='content'>
-    <img ref='imgView' :src="img" alt="loading...">
+    <img @load="doneImg" ref='imgView' :src="`file:${img}`" alt="loading..." :style="`transform: scale(${scale});left: ${left}px;top: ${top}px;`">
   </div>
   <div id="align-line">
     <div class="align-indicator align-2"></div>
@@ -127,6 +133,7 @@ const img = ref('')
 const files = reactive([] as string[])
 const cacheFiles = reactive([] as string[])
 const location = ref('')
+let init = false
 
 let file2idx = {}
 
@@ -139,6 +146,7 @@ window.electron.ipcRenderer.on('openFile',(_, pathData) => {
     file2idx[files[i]] = i
   }
   location.value = pathData.location
+  init = true
   setCurrentImg(api.joinPath(pathData.location,files[pathData.index]))
 })
 
@@ -147,28 +155,96 @@ window.electron.ipcRenderer.on('cacheFile',(_, cacheData) => {
   cacheFiles[file2idx[cacheData.file]] = cacheData.thumbFile
 })
 
+window.electron.ipcRenderer.on('initImgView',() => {
+  initScale()
+})
+
 const setCurrentImg = (path) => {
-  img.value = 'file:' + path
+  img.value = path
   document.title = 'Jack看图 - ' + path
+}
+
+const doneImg = () => {
+  if (init) {
+    init = false
+    initScale()
+  } else calcCorrectLeftTop()
 }
 
 const imgView = ref()
 const content = ref()
-const ratio = ref(1.)
+const scale = ref(1.)
+const left = ref(0)
+const top = ref(0)
+const offsetLeft = ref(0)
+const offsetTop = ref(0)
 
 onMounted(() => {
-  console.log(imgView.value)
-
-
+  console.log(content.value)
 
   new ResizeObserver((e) => {
     for (let i of e) {
-      console.log(i.contentRect.width)
-    }
-  }).observe(imgView.value)
+      const contentWidth = i.contentRect.width
+      const contentHeight = i.contentRect.height
 
+      // resizeDefaultRatio(contentWidth, contentHeight)
+
+    }
+  }).observe(content.value)
+  // new ResizeObserver((_) => {
+  //   resizeDefaultRatio(content.value.getBoundingClientRect().width, content.value.getBoundingClientRect().height)
+  // }).observe(imgView.value)
 })
 
+const getMetadata = (callback) => {
+  if (!img.value) return
+  const promise = api.sharpMetaData(img.value)
+  if (callback) {
+    promise.then(metadata => {
+      callback(metadata)
+    })
+  } else return promise
+}
+
+const initScale = () => {
+  const width = imgView.value.getBoundingClientRect().width
+  const height = imgView.value.getBoundingClientRect().height
+  const contentWidth = content.value.getBoundingClientRect().width
+  const contentHeight = content.value.getBoundingClientRect().height
+  let aspect = width! / height!
+  let newWidth, newHeight
+  if (contentWidth / aspect <= contentHeight) {
+    newWidth = contentWidth
+    newHeight = contentWidth / aspect
+  } else {
+    newWidth = contentHeight * aspect
+    newHeight = contentHeight
+  }
+  console.log(scale.value, newWidth / width)
+  scale.value = newWidth / width * scale.value
+  offsetLeft.value = 0
+  offsetTop.value = 0
+  left.value = contentWidth / 2 - newWidth / 2
+  top.value = contentHeight / 2 - newHeight / 2
+}
+
+const resizeDefaultScale = (contentWidth,contentHeight) => {
+
+  console.log(contentWidth, contentHeight)
+}
+
+const calcCorrectLeftTop = () => {
+  const width = imgView.value.getBoundingClientRect().width
+  const height = imgView.value.getBoundingClientRect().height
+  const contentWidth = content.value.getBoundingClientRect().width
+  const contentHeight = content.value.getBoundingClientRect().height
+  let mLeft = contentWidth / 2 - width / 2
+  let mTop = contentHeight / 2 - height / 2
+  if (width > contentWidth) mLeft = left.value + offsetLeft.value
+  if (height > contentHeight) mTop = top.value + offsetTop.value
+  left.value = mLeft
+  top.value = mTop
+}
 
 
 </script>
