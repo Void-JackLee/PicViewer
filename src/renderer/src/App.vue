@@ -190,8 +190,8 @@ const left = ref(0)
 const top = ref(0)
 const offsetLeft = ref(0)
 const offsetTop = ref(0)
-const anchorLeft = ref(50)
-const anchorTop = ref(50)
+// const anchorLeft = ref(50)
+// const anchorTop = ref(50)
 
 onMounted(() => {
   console.log(content.value)
@@ -247,8 +247,19 @@ const scaleListener = (e) => {
   // console.log(e.deltaY)
   const width = imgView.value.getBoundingClientRect().width
   const height = imgView.value.getBoundingClientRect().height
+  const contentWidth = content.value.getBoundingClientRect().width
+  const contentHeight = content.value.getBoundingClientRect().height
+  let aspect = width! / height!
+  let fitWidth
+  if (contentWidth / aspect <= contentHeight) {
+    fitWidth = contentWidth
+  } else {
+    fitWidth = contentHeight * aspect
+  }
+  const fitScale = fitWidth / width * scale.value
   const s = scale.value
   scale.value -= e.deltaY * scale.value * 0.0005
+  if (scale.value < fitScale) scale.value = fitScale
 
   offsetLeft.value = offsetLeft.value * scale.value / s
   offsetTop.value = offsetTop.value * scale.value / s
