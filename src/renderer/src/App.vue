@@ -109,7 +109,7 @@ main {
 <!--    <div class="align-indicator align-3"></div>-->
   </div>
   <div id="list-gallery">
-    <div :class="'list-item' + (img === 'file:' + api.joinPath(location,fileName) ? ' active' : '')" v-for="(fileName,i) in files" @click="setCurrentImg(api.joinPath(location,fileName))">
+    <div :class="'list-item' + (img === api.joinPath(location,fileName) ? ' active' : '')" v-for="(fileName,i) in files" @click="setCurrentImg(fileName)">
       <div class="list-img">
         <img :src="`file:${cacheFiles[i]}`"></img>
       </div>
@@ -132,13 +132,15 @@ const files = reactive([] as string[])
 const cacheFiles = reactive([] as string[])
 const location = ref('')
 const imgView = ref()
+const PRELOAD_COUNTS = 6
 
 const scale = ref(1.)
 
 let init = false
 
 let file2idx = {}
-let preloadList = []
+let preloadList: Set<string> = new Set([])
+let loadedImages = {}
 
 window.electron.ipcRenderer.on('openFile',(_, pathData) => {
   files.length = 0
@@ -146,11 +148,11 @@ window.electron.ipcRenderer.on('openFile',(_, pathData) => {
   file2idx = {}
   files.push(...pathData.files)
   for (let i in files) {
-    file2idx[files[i]] = i
+    file2idx[files[i]] = parseInt(i)
   }
   location.value = pathData.location
   init = true
-  setCurrentImg(api.joinPath(pathData.location,files[pathData.index]))
+  setCurrentImg(files[pathData.index])
 })
 
 window.electron.ipcRenderer.on('cacheFile',(_, cacheData) => {
@@ -162,13 +164,49 @@ window.electron.ipcRenderer.on('initImgView',() => {
   imgView.value.initScale()
 })
 
-const getPreloadImageList = () => {
+const getPreloadImageList = (idx: number) => {
+  preloadList = new Set([])
+  preloadList.add(files[idx])
+  for (let i = idx - 1,j = 0;i >= 0 && j < PRELOAD_COUNTS;i --, j ++) {
+    preloadList.add(files[i])
+  }
+  console.log(idx + 1, files.length)
+  for (let i = idx + 1,j = 0;i < files.length && j < PRELOAD_COUNTS;i ++, j ++) {
+    console.log(i)
+    preloadList.add(files[i])
+  }
+}
 
+const preloadImage = () => {
+  for (let i in loadedImages) {
+    if (!preloadList.has(i)) {
+      new Promise(resolve => {
+        console.log('Del:' + i)
+        delete loadedImages[i]
+        resolve(null)
+      })
+    }
+  }
+  for (let i of preloadList) {
+    if (!(i in loadedImages)) {
+      new Promise(resolve => {
+        console.log('Add:' + i)
+        loadedImages[i] = new Image()
+        loadedImages[i].src = 'file:' + api.joinPath(location.value,i)
+        resolve(null)
+      })
+    }
+  }
 }
 
 const setCurrentImg = (path) => {
-  img.value = path
-  document.title = 'Jack看图 - ' + path
+  const fullPath = api.joinPath(location.value, path)
+  img.value = fullPath
+  document.title = 'Jack看图 - ' + fullPath
+  if (path) {
+    getPreloadImageList(file2idx[path])
+    preloadImage()
+  }
 }
 
 const doneImg = () => {
