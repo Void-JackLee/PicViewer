@@ -108,7 +108,7 @@ main {
 <!--    <div class="align-indicator align-3"></div>-->
 <!--    <div class="align-indicator align-3"></div>-->
   </div>
-  <div id="list-gallery">
+  <div id="list-gallery" ref="gallery" @wheel="scrollY">
     <div :class="'list-item' + (img === api.joinPath(location,fileName) ? ' active' : '')" v-for="(fileName,i) in files" @click="setCurrentImg(fileName)">
       <div class="list-img">
         <img :src="`file:${cacheFiles[i]}`"></img>
@@ -132,6 +132,7 @@ const files = reactive([] as string[])
 const cacheFiles = reactive([] as string[])
 const location = ref('')
 const imgView = ref()
+const gallery = ref()
 const PRELOAD_COUNTS = 6
 
 const scale = ref(1.)
@@ -214,6 +215,11 @@ const doneImg = () => {
     init = false
     imgView.value.initScale()
   }
+}
+
+const scrollY = (e) => {
+    e.preventDefault();
+    gallery.value.scrollLeft += e.deltaY;
 }
 
 const getMetadata = (callback) => {
